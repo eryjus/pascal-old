@@ -1,0 +1,1043 @@
+//===================================================================================================================
+//
+// pascal.ast -- the abstract syntax tree structures for the pascal language
+//
+// -----------------------------------------------------------------------------------------------------------------
+//
+//    Date     Tracker  Version  Pgmr  Modification
+// ----/--/--  -------  -------  ----  -----------------------------------------------------------------------------
+// 2016/02/10  Initial   v0.0    ADCL  Initial version
+//
+//===================================================================================================================
+
+$defines {
+	#include "stringtab.hh"
+	#include <string>
+
+	//
+    // -- Templates functions for manipulating lists
+    //
+    //    Several template functions are useful to be used in a for loop.  Here is an example of how this might
+    //    be used:
+    //      for (node = list.first(); more(node); node = next(node)) {
+    //          // do something useful with the node
+    //      }
+    //    =====================================================================================================
+
+
+    //
+    // -- Append a node at the ned of the List
+    //    ------------------------------------
+    template <class T>
+    inline T *append(T *l, T *r) {
+        T *rv = l;
+        if (!l) return r; if (!r) return l;
+        while(l->Get_nxt()) l = (T *)l->Get_nxt();
+        l->Set_nxt(r);
+        return rv;
+    }
+
+
+	//
+	// -- This is the first node in a list (useful in a for loop)
+	//    -------------------------------------------------------
+    template <class T>
+    inline T *first(T *l) {
+        return (T*)l;
+    }
+
+
+	//
+	// -- Are there more nodes to process? (useful in a for loop)
+	//    --------------------------------------------------------
+    template <class T>
+    inline bool more(T *l) {
+        return (l != 0);
+    }
+
+
+	//
+	// -- get the next node in the list (useful in a for loop)
+	//    ----------------------------------------------------
+    template <class T>
+    inline T *next(T *l) {
+        if (more((T *)l)) return (T *)l->Get_nxt();
+        else return (T *)0;
+    }
+
+
+	//
+	// -- get the number of nodes in the List
+	//    -----------------------------------
+    template <class T>
+    inline int len(T *i) {
+        int rv; T *l;
+        for (rv = 0, l = first((T *)i); more((T *)l); l = next((T *)l)) rv ++;
+        return rv;
+    }
+
+
+    extern int yylineno;
+    extern std::string srcFile;
+
+	class Block;
+	class CaseConstList;
+	class CaseElement;
+	class CaseElemList;
+	class ExprList;
+	class FormalParmList;
+    class Ident;
+    class IdentList;
+    class IndexTypeList;
+    class Label;
+    class MemberDesignatorList;
+    class RecordSectionList;
+    class StmtList;
+    class SubrDeclList;
+    class VarAccessList;
+    class VariantList;
+    class VariantPart;
+}
+
+
+//===================================================================================================================
+// Define the anstract nodes
+//===================================================================================================================
+
+
+//
+// -- Common is a base class from which all other AST nodes will be derived.  This is very helpful when adding
+//    methods to the tree in order to make sure that all node types are implemented.
+//    --------------------------------------------------------------------------------------------------------
+$class(Common) $abstract ${
+	$attr $type(int) $name(lineNbr) = $no-init(yylineno)			// this is the current line number in the file
+	$attr $type(std::string) $name(fileName) = $no-init(srcFile)	// this is the file being parsed
+
+	$func $spec(void semant(void)) = $external
+$}
+
+
+//
+// -- ListOf is the list structure from which all other lists are implemented
+//    -----------------------------------------------------------------------
+$class(ListOf) $inherits(Common) $abstract ${
+	$attr $type(ListOf *) $name(nxt) = $no-init(ListOf::empty())
+$}
+
+
+//
+// -- Expr is a generic structure for a generalized Expression (be it a constant expresion or a computed expression)
+//    The thing to remember when building the AST is that the calculation of the constant will happen at code
+//    generation time -- not during parsing or at semantic analysis.  Therefore, the same structures can be used for
+//    both computed and constant expressions.
+//    --------------------------------------------------------------------------------------------------------------
+$class(Expr) $inherits(Common) $abstract ${
+$}
+
+
+//
+// -- Types play an important part of any programming language.  Types all have very special requirements within
+//    the language and in particulat during semantic analysis and code generation (consider records or structures
+//    and arrays with bounds checking).  Therefore, we will separate out all types into their own special AST node
+//    types.  The Type AST node will be used to collect these attributes and organize them logically.
+//    ------------------------------------------------------------------------------------------------------------
+$class(Type) $inherits(Common) $abstract ${
+$}
+
+
+//
+// -- A structured type is a special type that can be packed or leave some white space in the structure for data
+//    alignment.  This type allows for the flag that captures this data.
+//    ------------------------------------------------------------------------------------------------------------
+$class(StructuredType) $inherits(Type) $abstract ${
+	$attr $type(bool) $name(isPacked) = $no-init(false)
+$}
+
+
+//
+// -- Var is a variable declaration.  Though this can be called out in many ways, in this implementation it is
+//    part of a special class of nodes to make the implementation of the semantic phase easier to accompllish.
+//    ---------------------------------------------------------------------------------------------------------
+$class(Var) $inherits(Common) $abstract ${
+$}
+
+
+//
+// -- SubrHdr is a header for a subprogram.  This means either a function or a procedure.  The common elements will
+//    be collected here and the type-specific elements will be a part of the specific node.
+//    -------------------------------------------------------------------------------------------------------------
+$class(SubrHdr) $inherits(Common) $abstract ${
+	$attr $type(Ident *) $name(name)
+	$attr $type(FormalParmList *) $name(parms)
+$}
+
+
+//
+// -- SubrDecl is a full formal declaration for a subprogram.  This could be either a function or a procedure.
+//    --------------------------------------------------------------------------------------------------------
+$class(SubrDecl) $inherits(Common) $abstract ${
+$}
+
+
+//
+// -- FormalParm is a type of formal parameter.  We have several of these that can appear in any order, so we need
+//    an abstract parent class
+//    ------------------------------------------------------------------------------------------------------------
+$class(FormalParm) $inherits(Common) $abstract ${
+$}
+
+
+//
+// -- Stmt is the core of the list of instructions that need to be executed.  All code statement will be derived
+//    from this node in order to build a list of these statements.
+//    ----------------------------------------------------------------------------------------------------------
+$class(Stmt) $inherits(Common) $abstract ${
+	$attr $type(Label *) $name(label) = $no-init(NULL)		// NULL used here instead of Label::empty since
+	                                                        // the Label class is incomplete at this point
+$}
+
+
+//
+// -- VarAccess is used in many expressions, both as a read and a a write.  It needs to be treated as an
+//    expression, but is also unique enough to warrant its own base class.
+//    --------------------------------------------------------------------------------------------------
+$class(VarAccess) $inherits(Expr) $abstract ${
+$}
+
+
+//===================================================================================================================
+// The concrete Expression
+//===================================================================================================================
+
+
+//
+// -- We are going to define both a unary and binary abstract classes for use with Expressions.
+//    =========================================================================================
+
+
+//
+// -- first, a generic unary expression
+//    ---------------------------------
+$class(UnaryExpr) $inherits(Expr) $abstract ${
+	$attr $type(Expr *) $name(operand)
+$}
+
+
+//
+// -- and a binary expression
+//    -----------------------
+$class(BinaryExpr) $inherits(Expr) $abstract ${
+	$attr $type(Expr *) $name(left)
+	$attr $type(Expr *) $name(right)
+$}
+
+
+//
+// -- Now, the more concrete AST nodes
+//    ================================
+
+
+//
+// -- Plus unary expression
+//    ---------------------
+$class(PosExpr) $inherits(UnaryExpr) ${
+$}
+
+
+//
+// -- Negation unary expression
+//    -------------------------
+$class(NegExpr) $inherits(UnaryExpr) ${
+$}
+
+
+//
+// -- Boolean Not Expression
+//    ----------------------
+$class(NotExpr) $inherits(UnaryExpr) ${
+$}
+
+
+//
+// -- Equality comparison
+//    -------------------
+$class(EQExpr) $inherits(BinaryExpr) ${
+$}
+
+
+//
+// -- Not Equal comparison
+//    --------------------
+$class(NEExpr) $inherits(BinaryExpr) ${
+$}
+
+
+//
+// -- Greater than comparison
+//    -----------------------
+$class(GTExpr) $inherits(BinaryExpr) ${
+$}
+
+
+//
+// -- Greater than or equal to comparison
+//    -----------------------------------
+$class(GEExpr) $inherits(BinaryExpr) ${
+$}
+
+
+//
+// -- Less than comparison
+//    --------------------
+$class(LTExpr) $inherits(BinaryExpr) ${
+$}
+
+
+//
+// -- Less than or equal to comparison
+//    --------------------------------
+$class(LEExpr) $inherits(BinaryExpr) ${
+$}
+
+
+//
+// -- In Compariton (with a list)
+//    ---------------------------
+$class(InExpr) $inherits(BinaryExpr) ${
+$}
+
+
+//
+// -- Addition Expression
+//    -------------------
+$class(AddExpr) $inherits(BinaryExpr) ${
+$}
+
+
+
+//
+// -- Subtraction Expression
+//    ----------------------
+$class(SubExpr) $inherits(BinaryExpr) ${
+$}
+
+
+
+//
+// -- Boolean Or Expression
+//    ---------------------
+$class(OrExpr) $inherits(BinaryExpr) ${
+$}
+
+
+
+//
+// -- Multiplication Expression
+//    -------------------------
+$class(MulExpr) $inherits(BinaryExpr) ${
+$}
+
+
+
+//
+// -- Real division Expression
+//    ------------------------
+$class(RealDivExpr) $inherits(BinaryExpr) ${
+$}
+
+
+
+//
+// -- Integer division Expression
+//    ---------------------------
+$class(IntDivExpr) $inherits(BinaryExpr) ${
+$}
+
+
+//
+// -- Exponent Expression
+//    -------------------
+$class(ExpExpr) $inherits(BinaryExpr) ${
+$}
+
+
+//
+// -- Modulo Expression
+//    -----------------
+$class(ModExpr) $inherits(BinaryExpr) ${
+$}
+
+
+//
+// -- Boolean And Expression
+//    ----------------------
+$class(AndExpr) $inherits(BinaryExpr) ${
+$}
+
+
+//
+// -- An Identifier
+//    -------------
+$class(Ident) $inherits(Expr) ${
+	$attr $type(IdentEntry *) $name(entry)
+
+	$func $spec(const char *GetString(void)) = { return entry->GetKeyValue().c_str(); }
+$}
+
+
+//
+// -- A String Literal
+//    ----------------
+$class(StringLit) $inherits(Expr) ${
+	$attr $type(StringEntry *) $name(entry)
+$}
+
+
+//
+// -- An Integer Literal
+//    ------------------
+$class(IntLit) $inherits(Expr) ${
+	$attr $type(NumberEntry *) $name(entry)
+$}
+
+
+//
+// -- A Real Literal
+//    --------------
+$class(RealLit) $inherits(Expr) ${
+	$attr $type(NumberEntry *) $name(entry)
+$}
+
+
+//
+// -- NIL Literal
+//    -----------
+$class(NilLit) $inherits(Expr) ${
+$}
+
+
+//
+// -- Constant Assignment -- an assignment is really an expression; a constant assignment has some special rules
+//    ----------------------------------------------------------------------------------------------------------
+$class(ConstAssign) $inherits(Expr) ${
+	$attr $type(Ident *) $name(id)
+	$attr $type(Expr *) $name(val)
+$}
+
+
+//
+// -- Case constant -- used to match a single case
+//    --------------------------------------------
+$class(CaseConst) $inherits(Expr) ${
+	$attr $type(Expr *) $name(expr)
+$}
+
+
+//
+// -- Constant Range -- used in cases where a range of valid options is to be matched
+//    -------------------------------------------------------------------------------
+$class(CaseConstRange) $inherits(CaseConst) ${
+	$attr $type(Expr *) $name(thruExpr)
+$}
+
+
+//
+// -- Function call for use in a expression
+//    -------------------------------------
+$class(FuncCall) $inherits(Expr) ${
+	$attr $type(Ident *) $name(name)
+	$attr $type(ExprList *) $name(actParms)
+$}
+
+
+//
+// -- Variable Access from within an expression
+//    -----------------------------------------
+$class(VariableAccess) $inherits(Expr) ${
+	$attr $type(VarAccess *) $name(var)
+$}
+
+
+//
+// -- Set Constructor Expression
+//    --------------------------
+$class(SetConstructor) $inherits(Expr) ${
+	$attr $type(MemberDesignatorList *) $name(mbrDesignatorList)
+$}
+
+
+//
+// -- Expr:Expr aggregate expression
+//    ------------------------------
+$class(ExprExpr) $inherits(Expr) ${
+	$attr $type(Expr *) $name(expr1)
+	$attr $type(Expr *) $name(expr2)
+$}
+
+
+//
+// -- Expr:Expr:Expr aggregate expression
+//    -----------------------------------
+$class(ExprExprExpr) $inherits(Expr) ${
+	$attr $type(Expr *) $name(expr1)
+	$attr $type(Expr *) $name(expr2)
+	$attr $type(Expr *) $name(expr3)
+$}
+
+
+//===================================================================================================================
+// All the different types of Type nodes
+//===================================================================================================================
+
+
+//
+// -- We are going to define several kinds of Types
+//    =============================================
+
+
+//
+// -- Named Type (supposed to be already defined)
+//    -------------------------------------------
+$class(NamedType) $inherits(Type) ${
+	$attr $type(Ident *) $name(type)
+$}
+
+
+//
+// -- Enumerated Types
+//    ----------------
+$class(EnumeratedType) $inherits(Type) ${
+	$attr $type(IdentList *) $name(idents)
+$}
+
+
+//
+// -- Subrange of an existing type
+//    ----------------------------
+$class(SubrangeType) $inherits(Type) ${
+	$attr $type(Expr *) $name(fromVal)
+	$attr $type(Expr *) $name(toVal)
+$}
+
+
+//
+// -- Type of a set
+//    -------------
+$class(SetOfType) $inherits(StructuredType) ${
+	$attr $type(Type *) $name(type)
+$}
+
+
+//
+// -- Type of a File
+//    --------------
+$class(FileOfType) $inherits(StructuredType) ${
+	$attr $type(Type *) $name(type)
+$}
+
+
+//
+// -- Type of a pointer to a type
+//    ---------------------------
+$class(PointerType) $inherits(Type) ${
+	$attr $type(Type *) $name(type)
+$}
+
+
+//
+// -- Type of an array of some type
+//    -----------------------------
+$class(ArrayType) $inherits(StructuredType) ${
+	$attr $type(IndexTypeList *) $name(indices)
+	$attr $type(Type *) $name(type)
+$}
+
+
+//
+// -- Record Section (as derived from a type)
+//    ---------------------------------------
+$class(RecordSection) $inherits(Type) ${
+	$attr $type(IdentList *) $name(idList)
+	$attr $type(Type *) $name(type)
+$}
+
+
+//
+// -- Record Variant Selector
+//    -----------------------
+$class(VariantSelector) $inherits(Type) ${
+	$attr $type(Ident *) $name(name)
+	$attr $type(Ident *) $name(type)
+$}
+
+
+//
+// -- This is the variant part of a record definition
+//    -----------------------------------------------
+$class(VariantPart) $inherits(Type) ${
+	$attr $type(VariantSelector *) $name(varSel)
+	$attr $type(VariantList *) $name(varList)
+$}
+
+
+//
+// -- Record variant for multi-formatted records
+//    ------------------------------------------
+$class(Variant) $inherits(Type) ${
+	$attr $type(CaseConstList *) $name(cases)
+	$attr $type(RecordSectionList *) $name(recSecList)
+	$attr $type(VariantPart *) $name(varPart)
+$}
+
+
+//
+// -- This is a new type definition
+//    -----------------------------
+$class(TypeDef) $inherits(Type) ${
+	$attr $type(Ident *) $name(id)
+	$attr $type(Type *) $name(type)
+$}
+
+
+//
+// -- This is (finally) a record type definition
+//    ------------------------------------------
+$class(RecordType) $inherits(StructuredType) ${
+	$attr $type(RecordSectionList *) $name(fields)
+	$attr $type(VariantPart *) $name(variant)
+$}
+
+
+//===================================================================================================================
+// Concrete Variable declarations
+//===================================================================================================================
+
+
+$class(VarDecl) $inherits(Var) ${
+	$attr $type(IdentList *) $name(name)
+	$attr $type(Type *) $name(type)
+$}
+
+
+//===================================================================================================================
+// Concrete Subroutine Header declarations
+//===================================================================================================================
+
+
+//
+// -- This is a procedure header
+//    --------------------------
+$class(ProcHdr) $inherits(SubrHdr) ${
+$}
+
+
+//
+// -- This is a function header
+//    -------------------------
+$class(FuncHdr) $inherits(SubrHdr) ${
+	$attr $type(Ident *) $name(result)
+$}
+
+
+//===================================================================================================================
+// Concrete Formal parameters
+//===================================================================================================================
+
+
+//
+// -- This will be a parameter that is passed by value
+//    ------------------------------------------------
+$class(ValFormalParm) $inherits(FormalParm) ${
+	$attr $type(IdentList *) $name(names)
+	$attr $type(Ident *) $name(type)
+$}
+
+
+//
+// -- This will be a parameter that is passed by reference
+//    ----------------------------------------------------
+$class(RefFormalParm) $inherits(FormalParm) ${
+	$attr $type(IdentList *) $name(names)
+	$attr $type(Ident *) $name(type)
+$}
+
+
+//
+// -- This will be a parameter that is a procedure address
+//    ----------------------------------------------------
+$class(ProcFormalParm) $inherits(FormalParm) ${
+	$attr $type(ProcHdr *) $name(proc)
+$}
+
+
+//
+// -- This will be a parameter that is a function address
+//    ---------------------------------------------------
+$class(FuncFormalParm) $inherits(FormalParm) ${
+	$attr $type(FuncHdr *) $name(proc)
+$}
+
+
+//===================================================================================================================
+// Concrete Subroutine Declarations
+//===================================================================================================================
+
+
+//
+// -- This is a procedure Declaration
+//    -------------------------------
+$class(ProcDecl) $inherits(SubrDecl) ${
+	$attr $type(ProcHdr *) $name(hdr)
+	$attr $type(Block *) $name(block)
+	$attr $type(int) $name(directive)
+$}
+
+
+//
+// -- This is a function declaration
+//    ------------------------------
+$class(FuncDecl) $inherits(SubrDecl) ${
+	$attr $type(FuncHdr *) $name(hdr)
+	$attr $type(Block *) $name(block)
+	$attr $type(int) $name(directive)
+$}
+
+
+//===================================================================================================================
+// Concrete Variable Access nodes
+//===================================================================================================================
+
+
+//
+// -- A simple identifier name
+//    ------------------------
+$class(SimpleNameAccess) $inherits(VarAccess) ${
+	$attr $type(Ident *) $name(id)
+$}
+
+
+//
+// -- A pointer access
+//    ----------------
+$class(PointerAccess) $inherits(VarAccess) ${
+	$attr $type(VarAccess *) $name(var)
+$}
+
+
+//
+// -- An indexed variable access
+//    --------------------------
+$class(IdxVarAccess) $inherits(VarAccess) ${
+	$attr $type(VarAccess *) $name(var)
+	$attr $type(ExprList *) $name(indices)
+$}
+
+
+//
+// -- A record field access
+//    ---------------------
+$class(FieldAccess) $inherits(VarAccess) ${
+	$attr $type(VarAccess *) $name(var)
+	$attr $type(Ident *) $name(field)
+$}
+
+
+//===================================================================================================================
+// The concrete statements
+//===================================================================================================================
+
+
+//
+// -- An Assignment Statement
+//    -----------------------
+$class(AssignmentStmt) $inherits(Stmt) ${
+	$attr $type(VarAccess *) $name(target)
+	$attr $type(Expr *) $name(value)
+$}
+
+
+//
+// -- A Procedure Call Statement
+//    --------------------------
+$class(ProcedureCallStmt) $inherits(Stmt) ${
+	$attr $type(Ident *) $name(name)
+	$attr $type(ExprList *) $name(parms)
+$}
+
+
+//
+// -- A Goto Statement
+//    ----------------
+$class(GotoStmt) $inherits(Stmt) ${
+	$attr $type(Label *) $name(label)
+$}
+
+
+//
+// -- A Compound Statement (which is a list of statements surrounded with BEGIN and END)
+//    ----------------------------------------------------------------------------------
+$class(CompoundStmt) $inherits(Stmt) ${
+	$attr $type(StmtList *) $name(stmts)
+$}
+
+
+//
+// -- A Case Statement
+//    ----------------
+$class(CaseStmt) $inherits(Stmt) ${
+	$attr $type(Expr *) $name(control)
+	$attr $type(CaseElemList *) $name(cases)
+	$attr $type(Stmt *) $name(other)
+$}
+
+
+//
+// -- Repeat Statement
+//    ----------------
+$class(RepeatStmt) $inherits(Stmt) ${
+	$attr $type(StmtList *) $name(stmts)
+	$attr $type(Expr *) $name(untilCond)
+$}
+
+
+//
+// -- With Statement
+//    --------------
+$class(WithStmt) $inherits(Stmt) ${
+	$attr $type(VarAccessList *) $name(recordVars)
+	$attr $type(Stmt *) $name(stmt)
+$}
+
+
+//
+// -- If Statement
+//    ------------
+$class(IfStmt) $inherits(Stmt) ${
+	$attr $type(Expr *) $name(cond)
+	$attr $type(Stmt *) $name(thenPart)
+	$attr $type(Stmt *) $name(elsePart)
+$}
+
+
+//
+// -- While Statement
+//    ---------------
+$class(WhileStmt) $inherits(Stmt) ${
+	$attr $type(Expr *) $name(untilCond)
+	$attr $type(Stmt *) $name(stmt)
+$}
+
+
+//
+// -- For Statement
+//    -------------
+$class(ForStmt) $inherits(Stmt) ${
+	$attr $type(Ident *) $name(id)
+	$attr $type(Expr *) $name(init)
+	$attr $type(int) $name(dir)
+	$attr $type(Expr *) $name(final)
+	$attr $type(Stmt *) $name(stmt)
+$}
+
+
+//===================================================================================================================
+// The concrete Lists
+//===================================================================================================================
+
+
+//
+// -- A list of expressions
+//    ---------------------
+$class(ExprList) $inherits(ListOf) ${
+	$attr $type(Expr *) $name(expr)
+$}
+
+//
+// -- Constant Assignment List -- a list of assignments resulting in constant definitions
+//    -----------------------------------------------------------------------------------
+$class(ConstList) $inherits(ListOf) ${
+	$attr $type(ConstAssign *) $name(constDef)
+$}
+
+
+//
+// -- Labels List -- a list of labels
+//    -------------------------------
+$class(LabelList) $inherits(ListOf) ${
+	$attr $type(Label *) $name(label)
+
+	$func $spec(void semant(void)) = $external
+$}
+
+
+//
+// -- Type Definition List -- a list of type definitions
+//    --------------------------------------------------
+$class(TypeDefList) $inherits(ListOf) ${
+	$attr $type(TypeDef *) $name(typeDef)
+$}
+
+
+//
+// -- Identifier List -- used in several places so the meaning is context dependent
+//    -----------------------------------------------------------------------------
+$class(IdentList) $inherits(ListOf) ${
+	$attr $type(Ident *) $name(ident)
+
+	$func $spec(IdentEntry *Get_entry(void)) = { return ident->Get_entry(); }
+	$func $spec(const char *GetString(void)) = { return ident->GetString(); }
+$}
+
+
+//
+// -- List of types used as indices into an array
+//    -------------------------------------------
+$class(IndexTypeList) $inherits(ListOf) ${
+	$attr $type(Type *) $name(type)
+$}
+
+
+//
+// -- A list of Record Sections
+//    -------------------------
+$class(RecordSectionList) $inherits(ListOf) ${
+	$attr $type(RecordSection *) $name(recSec)
+$}
+
+
+//
+// -- A list of case constants
+//    ------------------------
+$class(CaseConstList) $inherits(ListOf) ${
+	$attr $type(CaseConst *) $name(caseConst)
+$}
+
+
+//
+// -- A list of variants
+//    ------------------
+$class(VariantList) $inherits(ListOf) ${
+	$attr $type(Variant *) $name(variant)
+$}
+
+
+//
+// -- A list of variable daclarations
+//    -------------------------------
+$class(VarDeclList) $inherits(ListOf) ${
+	$attr $type(VarDecl *) $name(varDecl)
+$}
+
+
+//
+// -- A list of formal parameters
+//    ---------------------------
+$class(FormalParmList) $inherits(ListOf) ${
+	$attr $type(FormalParm *) $name(parm)
+$}
+
+
+//
+// -- A list of Subroutine Declarations
+//    ---------------------------------
+$class(SubrDeclList) $inherits(ListOf) ${
+	$attr $type(SubrDecl *) $name(subr)
+$}
+
+
+//
+// -- This is a list of statements (to execute)
+//    -----------------------------------------
+$class(StmtList) $inherits(ListOf) ${
+	$attr $type(Stmt *) $name(stmt)
+$}
+
+
+//
+// -- This is a list of case elements
+//    -------------------------------
+$class(CaseElemList) $inherits(ListOf) ${
+	$attr $type(CaseElement *) $name(caseElem)
+$}
+
+
+//
+// -- A Variable Access List
+//    ----------------------
+$class(VarAccessList) $inherits(ListOf) ${
+	$attr $type(VarAccess *) $name(varAccess)
+$}
+
+
+//
+// -- A Member Designator Expression list separated by ..
+//    ---------------------------------------------------
+$class(MemberDesignator) $inherits(ListOf) ${
+	$attr $type(Expr *) $name(expr)
+$}
+
+
+//
+// -- A Member Designator List list separated by
+//    ------------------------------------------
+$class(MemberDesignatorList) $inherits(ListOf) ${
+	$attr $type(MemberDesignator *) $name(mbrDesignator)
+$}
+
+
+//===================================================================================================================
+// Some misc nodes
+//===================================================================================================================
+
+
+//
+// -- The following is used to identify a label definition
+//    ----------------------------------------------------
+$class(Label) $inherits(IntLit) ${
+$}
+
+
+//
+// -- Case statement case element
+//    ---------------------------
+$class(CaseElement) $inherits(Common) ${
+	$attr $type(CaseConstList *) $name(cases)
+	$attr $type(Stmt *) $name(stmt)
+$}
+
+
+//
+// -- The block organizes sections of the actual code that will run
+//    -------------------------------------------------------------
+$class(Block) $inherits(Common) ${
+	$attr $type(LabelList *) $name(labels)
+	$attr $type(ConstList *) $name(consts)
+	$attr $type(TypeDefList *) $name(typedefs)
+	$attr $type(VarDeclList *) $name(vardecls)
+	$attr $type(SubrDeclList *) $name(subrdecls)
+	$attr $type(StmtList *) $name(stmts)
+
+	$func $spec(void semant(void)) = $external
+$}
+
+
+//
+// -- This is a program Heading
+//    -------------------------
+$class(ProgramHeading) $inherits(Common) ${
+	$attr $type(Ident *) $name(name)
+	$attr $type(IdentList *) $name(parms)
+
+	$func $spec(void semant(void)) = $external
+$}
+
+
+//
+// -- This is ultimately a source file
+//    --------------------------------
+$class(SourceFile) $inherits(Common) ${
+	$attr $type(ProgramHeading *) $name(pgmHdg)
+	$attr $type(Block *) $name(code)
+
+	$func $spec(void semant(void)) = $external
+$}
