@@ -1,0 +1,6 @@
+This is a pascal comiler that is a practical application of the concepts that I learned from the Compilers class 
+hosted by CourseA.org.  Since Pascal is a relative small language, it is a relatively easy language to implement.
+
+In attition, I am using this compiler project as a case study for the ast-cc project (also hosted on GitHub, 
+https://github.com/eryjus/ast-cc.  Feel free to check out and modify either to suit your personal needs.  See 
+LICENSE for additional information.
