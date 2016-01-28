@@ -5,18 +5,19 @@
 /* --------------------------------------------------------------------------------------------------------------- */
 /*                                                                                                                 */
 /*    Date     Tracker  Version  Pgmr  Modification                                                                */
-/* ----/--/--  -------  -------  ----  --------------------------------------------------------------------------- */
-/* 2016/01/10  Initial   v0.0    ADCL  Initial version -- leveraged from the pascal compiler, but made C++         */
-/* 2016/01/19  Initial   v0.0    ADCL  Add some error checking to the scanner, returning the results to the        */
+/* ----------  -------  -------  ----  --------------------------------------------------------------------------- */
+/* 2016-01-10  Initial   v0.0    ADCL  Initial version -- leveraged from the pascal compiler, but made C++         */
+/* 2016-01-19  Initial   v0.0    ADCL  Add some error checking to the scanner, returning the results to the        */
 /*                                     scanner and allowing the scanner to handle the error reporting.             */
 /*                                                                                                                 */
 /*=================================================================================================================*/
 
 
 %{
-	#include "pascal.hh"
 	#include "debug.hh"
 	#include "stringtab.hh"
+	#include "symtab.hh"
+	#include "pascal.hh"
 	#include "grammar.hh"
 
 	#include <ctype.h>

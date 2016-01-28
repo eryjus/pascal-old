@@ -11,6 +11,7 @@
 //===================================================================================================================
 
 #include "debug.hh"
+#include "symtab.hh"
 #include "pascal.hh"
 
 #include <cstring>
@@ -37,12 +38,24 @@ static void PrintStartupData(void)
 	fprintf(stdout, "  ( build %lu on %s )\n\n", BLD_NUM, BLD_DATE);
 }
 
+
 //
 // -- This function is used to establish the default compiler state
 //    -------------------------------------------------------------
 static void InitializeCompiler(void)
 {
 	PrintStartupData();
+	
+	idTable.AddString("boolean");
+	idTable.AddString("string");
+	idTable.AddString("char");
+	idTable.AddString("integer");
+	idTable.AddString("real");
+	idTable.AddString("^");
+
+	idTable.AddString("maxint");
+	idTable.AddString("false");
+	idTable.AddString("true");
 }
 
 

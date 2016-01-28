@@ -13,9 +13,10 @@
 
 
 %{
-	#include "pascal.hh"
 	#include "debug.hh"
 	#include "stringtab.hh"
+	#include "symtab.hh"
+	#include "pascal.hh"
 
 	#include <string>
 	#include <cstring>
@@ -405,7 +406,7 @@ Label
 	: T_INTEGER
 		{
 			Log(DebugLog::LOG_YACC, LOG_DEBUG, "Creating a Label AST node");
-			$$ = Label::factory($1);
+			$$ = Label::factory(idTable.AddString($1->GetKeyString()));
 			ACCEPT("Label #1");
 		}
 	;

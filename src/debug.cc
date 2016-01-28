@@ -150,7 +150,7 @@ void DebugLog::WriteLog(Logger log, LogLevel lvl, std::string file, int line, st
 	va_end(args);
 
 	if (debugLevels[log] >= lvl) {
-		fprintf(debugFiles[log], "%s(%d) [...%-*.*s]: %s\n", loggerNames[log].c_str(), lvl, fnLen, fnLen,
-				fLoc.c_str(), buf);
+		fprintf(debugFiles[log], GREEN HI "%s(%d) " BLUE HI "[...%-*.*s]:" RESET " %s\n", 
+				loggerNames[log].c_str(), lvl, fnLen, fnLen, fLoc.c_str(), buf);
 	}
 }

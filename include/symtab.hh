@@ -16,32 +16,77 @@
 #include "stringtab.hh"
 
 
+struct Symbol;
+class Expr;
+
+extern Symbol *BOOLEAN;
+extern Symbol *CHAR;
+extern Symbol *INTEGER;
+extern Symbol *REAL;
+extern Symbol *STRING;
+
+
+//
+// -- The following functions are the interface for the Symbol table
+//    --------------------------------------------------------------
+void EnterScope(void);
+struct Symbol *FindSymbol(IdentEntry *entry);
+struct Symbol *AddSymbol(IdentEntry *entry);
+bool CheckScope(IdentEntry *entry);
+void ExitScope(void);
+
+void DumpSymbol(Symbol *sym);
+
+
+//
+// -- These are the kinds of symbols we will be tracking
+//    --------------------------------------------------
 typedef enum {
 	UNKNOWN,
 	PROGRAM,
 	LABEL,
 	PROCEDURE,
 	FUNCTION,
-	STRING,
-	INTEGER,
-	REAL,
-} SymbolType;
+	TYPEDEF,
+	IDENT,
+	LITERAL,
+	MEMADDR,
+} SymbolKind;
 
 
 //
 // -- This is a symbol in the symbol table
 //    ------------------------------------
 typedef struct Symbol {
-	Entry *id;
-	SymbolType type;
+	IdentEntry *id;
+	SymbolKind kind;
 	bool isConst;
-	struct Symbol *next;
+	bool isPacked;
+	Symbol *typeSym;
+	int elemCount;
+	bool boolConst;
+	Symbol *next;
+	
+	union ConstantValue *cVal;
+	
+	const char *GetKeyString(void) const { return id?id->GetKeyString():"(null)"; }
 
-	Symbol *SetLabel() {type = LABEL; return this; }
-	Symbol *SetProgram() { type = PROGRAM; return this; }
-	Symbol *SetString() { type = STRING; return this; }
-
-	Symbol *SetConst() { isConst = true; return this; }
+	Symbol *SetProgram(void) { kind = PROGRAM; return this; }
+	Symbol *SetLabel(void) { kind = LABEL; return this; }
+	Symbol *SetProcedure(void) { kind = PROCEDURE; return this; }
+	Symbol *SetFunction(void) { kind = FUNCTION; return this; }
+	Symbol *SetTypedef(void) { kind = TYPEDEF; return this; }
+	Symbol *SetIdent(void) { kind = IDENT; return this; }
+	Symbol *SetLiteral(void) { kind = LITERAL; return this; }
+	Symbol *SetPointer(void) { kind = MEMADDR; return this; }
+	
+	Symbol *SetBool(void) { typeSym = BOOLEAN; return this; }
+	Symbol *SetString(void) { typeSym = STRING; return this; }
+	Symbol *SetInteger(void) { typeSym = INTEGER; return this; }
+	Symbol *SetReal(void) { typeSym = REAL; return this; }
+	Symbol *SetChar(void) { typeSym = CHAR; return this; }
+	
+	Symbol *SetConst(void) { isConst = true; return this; }
 } Symbol;
 
 
@@ -58,17 +103,3 @@ typedef struct Scope {
 // -- This is the symbol table -- make it globally available
 //    ------------------------------------------------------
 extern Scope *symbolTable;
-
-
-//
-// -- The following functions are the interface for the Symbol table
-//    --------------------------------------------------------------
-void EnterScope(void);
-Symbol *FindSymbol(Entry *sym);
-Symbol *AddSymbol(Entry *sym);
-bool CheckScope(Entry *sym);
-void ExitScope(void);
-
-
-
-

@@ -49,7 +49,7 @@ TGT=pas-cc
 # -- These are the build commands
 #    ----------------------------
 CFLAGS=-Wno-write-strings -Wno-unused-function
-LIBS=-lstdc++
+LIBS=-lstdc++ -lm
 
 LEX=flex --yylineno
 YAC=bison --defines=$(YY-HH) --debug --report-file=$(RPT) --report=all
@@ -130,4 +130,5 @@ clean:
 	rm -f ast-nodes.h
 	rm -fR obj
 	rm -f *~
+	rm -f .gitignore~
 	echo "All cleaned up!"

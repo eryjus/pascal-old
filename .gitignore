@@ -5,3 +5,9 @@ obj
 test.pas
 .directory
 *~
+include/grammar.hh
+include/pascal.hh
+src/build-num.cc
+src/grammar.cc
+src/lexer.cc
+

@@ -12,6 +12,7 @@
 
 #include "symtab.hh"
 #include "debug.hh"
+#include "pascal.hh"
 
 
 //
@@ -41,12 +42,12 @@ void EnterScope(void)
 //
 // -- Find a symbol somewhere in the symbol table
 //    -------------------------------------------
-Symbol *FindSymbol(Entry *id)
+Symbol *FindSymbol(IdentEntry *entry)
 {
 	Log(DebugLog::LOG_SYM, LOG_ENTRY, "Entering FindSymbol(IdentEntry *id)");
-	Log(DebugLog::LOG_SYM, LOG_PARMS, "  id = %p (%s)", id, id->GetKeyValue().c_str());
+	Log(DebugLog::LOG_SYM, LOG_PARMS, "  id = %p (%s)", entry, entry->GetKeyString());
 
-	Symbol *sym;
+	Symbol *sym = NULL;
 	Scope *sc = symbolTable;
 	Symbol *wrk;
 
@@ -54,7 +55,7 @@ Symbol *FindSymbol(Entry *id)
 		wrk = sc->syms;
 
 		while (wrk) {
-			if (wrk->id == id) {
+			if (wrk->id == entry) {
 				sym = wrk;
 				goto exit;
 			}
@@ -76,19 +77,24 @@ exit:
 //
 // -- Add a symbol to the symbol table
 //    --------------------------------
-Symbol *AddSymbol(Entry *id)
+Symbol *AddSymbol(IdentEntry *entry)
 {
 	Log(DebugLog::LOG_SYM, LOG_ENTRY, "Entering AddSymbol(IdentEntry *id)");
-	Log(DebugLog::LOG_SYM, LOG_PARMS, "  id = %p (%s)", id, id->GetKeyValue().c_str());
+	Log(DebugLog::LOG_SYM, LOG_PARMS, "  id = %p (%s)", entry, entry->GetKeyString());
+	
+	if (entry == NULL) return NULL;
 
 	Symbol *sym = new Symbol;
 	if (!symbolTable) Fatal(DebugLog::LOG_SYM, LOG_SEVERE, "No scope defined before adding a symbol");
 	if (!sym) Fatal(DebugLog::LOG_SYM, LOG_SEVERE, "Out of memory in AddSymbol()");
 
-	sym->id = id;
-	sym->next = symbolTable->syms;
+	sym->id = entry;
 	sym->isConst = false;
-	sym->type = UNKNOWN;
+	sym->isPacked = false;
+	sym->kind = UNKNOWN;
+	sym->typeSym = NULL;
+	sym->elemCount = 0;			// > 0 means it is an array
+	sym->next = symbolTable->syms;
 	symbolTable->syms = sym;
 
 	Log(DebugLog::LOG_SYM, LOG_PARMS, "  return value = %p", sym);
@@ -101,10 +107,10 @@ Symbol *AddSymbol(Entry *id)
 //
 // -- Check the top scope to see if a symbol exists
 //    ---------------------------------------------
-bool CheckScope(Entry *id)
+bool CheckScope(IdentEntry *entry)
 {
 	Log(DebugLog::LOG_SYM, LOG_ENTRY, "Entering CheckScope(IdentEntry *id)");
-	Log(DebugLog::LOG_SYM, LOG_PARMS, "  id = %p (%s)", id, id->GetKeyValue().c_str());
+	Log(DebugLog::LOG_SYM, LOG_PARMS, "  id = %p (%s)", entry, entry->GetKeyString());
 
 	bool rv = false;
 	Symbol *wrk;
@@ -113,7 +119,7 @@ bool CheckScope(Entry *id)
 	wrk = symbolTable->syms;
 
 	while (wrk) {
-		if (wrk->id == id) {
+		if (wrk->id == entry) {
 			rv = true;
 			goto exit;
 		}
@@ -153,3 +159,20 @@ void ExitScope(void)
 }
 
 
+//
+// -- Dump a symbol's data to the log
+//    -------------------------------
+void DumpSymbol(Symbol *sym)
+{
+	Log(DebugLog::LOG_SYM, LOG_HIDEBUG, "**************************************************");
+	Log(DebugLog::LOG_SYM, LOG_HIDEBUG, "Dumping Symbol at address at %p", sym);
+	
+	if (!sym) return;
+	
+	Log(DebugLog::LOG_SYM, LOG_HIDEBUG, "   Symbol name..: %s", sym->GetKeyString());	
+	Log(DebugLog::LOG_SYM, LOG_HIDEBUG, "   Symbol kind..: %d", sym->kind);	
+	Log(DebugLog::LOG_SYM, LOG_HIDEBUG, "   Symbol const.: %s", sym->isConst?"true":"false");	
+	Log(DebugLog::LOG_SYM, LOG_HIDEBUG, "   Symbol packed: %s", sym->isPacked?"true":"false");	
+	Log(DebugLog::LOG_SYM, LOG_HIDEBUG, "   Symbol type..: %p", sym->typeSym);	
+	Log(DebugLog::LOG_SYM, LOG_HIDEBUG, "**************************************************");
+}

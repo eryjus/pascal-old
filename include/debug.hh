@@ -110,4 +110,15 @@ public:
 extern DebugLog dbgLog;
 
 
+//
+// -- ANSI escape sequences
+//    ---------------------
+#define ESC "\x1b["
+#define RESET ESC "0m"
+#define RED ESC "31m"
+#define GREEN ESC "32m"
+#define BLUE ESC "34m"
+#define HI ESC "1m"
+
+
 #endif
