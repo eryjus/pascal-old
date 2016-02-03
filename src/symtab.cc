@@ -14,6 +14,8 @@
 #include "debug.hh"
 #include "pascal.hh"
 
+#include <cstring>
+
 
 //
 // -- This is the actual symbol table
@@ -87,7 +89,9 @@ Symbol *AddSymbol(IdentEntry *entry)
 	Symbol *sym = new Symbol;
 	if (!symbolTable) Fatal(DebugLog::LOG_SYM, LOG_SEVERE, "No scope defined before adding a symbol");
 	if (!sym) Fatal(DebugLog::LOG_SYM, LOG_SEVERE, "Out of memory in AddSymbol()");
-
+	
+	memset(sym, 0, sizeof(Symbol));
+	
 	sym->id = entry;
 	sym->isConst = false;
 	sym->isPacked = false;
@@ -176,3 +180,62 @@ void DumpSymbol(Symbol *sym)
 	Log(DebugLog::LOG_SYM, LOG_HIDEBUG, "   Symbol type..: %p", sym->typeSym);	
 	Log(DebugLog::LOG_SYM, LOG_HIDEBUG, "**************************************************");
 }
+
+
+//
+// -- This function is used to print a type record from the type table.  Keep in mind that a type record is 
+//    actually a suite of structures.
+//    -----------------------------------------------------------------------------------------------------
+void DumpTypeRecord(DefinedType *tp)
+{
+	char *desc [] = {
+		"TYP_UNKNOWN",
+		"TYP_BASE_TYPE",
+		"TYP_ALIAS",
+		"TYP_POINTER",
+		"TYP_SUBRANGE",
+		"TYP_ENUMERATION",
+	};
+	
+	Log(DebugLog::LOG_SYM, LOG_HIDEBUG, "===========================================================================");
+	Log(DebugLog::LOG_SYM, LOG_HIDEBUG, "Dumping type record located at %p", tp);
+	
+	if (!tp) return;
+	
+	Log(DebugLog::LOG_SYM, LOG_HIDEBUG, "  typesym : %p", tp->typeSym);
+	Log(DebugLog::LOG_SYM, LOG_HIDEBUG, "  name    : %s", (tp->typeSym?tp->typeSym->GetKeyString():"(null symbol)"));
+	Log(DebugLog::LOG_SYM, LOG_HIDEBUG, "  kind    : %d (%s)", tp->kind, desc[tp->kind]);
+	Log(DebugLog::LOG_SYM, LOG_HIDEBUG, "  hostType: %s", 
+			(tp->hostType?tp->hostType->GetKeyString():"(null reference type)"));
+	
+	switch(tp->kind) {
+	case TYP_BASE_TYPE:
+	case TYP_POINTER:
+	case TYP_ALIAS:
+		break;
+			
+	case TYP_SUBRANGE:
+		Log(DebugLog::LOG_SYM, LOG_HIDEBUG, "  L-bound : %ld", tp->lowerBound);
+		Log(DebugLog::LOG_SYM, LOG_HIDEBUG, "  U-bound : %ld", tp->upperBound);
+		break; 
+		
+	case TYP_ENUMERATION:
+		if (!tp->enumList) break;
+		for (IdentList *idList = tp->enumList; more(idList); idList = next(idList)) {
+			Symbol *sym = FindSymbol(idList->Get_ident()->Get_entry());
+			 
+			Log(DebugLog::LOG_SYM, LOG_HIDEBUG, "  Ident   : %s; value: %ld", sym?sym->GetKeyString():"(null symbol)", 
+				sym&&sym->cVal?sym->cVal->intVal:0);
+		}
+		
+		break;
+			
+	default:
+		Log(DebugLog::LOG_SYM, LOG_HIDEBUG, "DumpTypeRecord() is missing some output details!");
+		break;
+	}
+	
+	Log(DebugLog::LOG_SYM, LOG_HIDEBUG, "===========================================================================");
+}
+
+

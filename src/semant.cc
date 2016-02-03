@@ -235,6 +235,54 @@ void SourceFile::semant(void)
 	TRUE->cVal = new ConstantValue;
 	TRUE->cVal->boolVal = true;
 	
+	MAXINT->cVal = new ConstantValue;
+	MAXINT->cVal->intVal = 0x7fffffff;
+	
+	NIL->cVal = new ConstantValue;
+	NIL->cVal->memAddr = 0;
+	
+	
+	//
+	// -- Now, create defined type structures for these types
+	//    ---------------------------------------------------
+	DefinedType *tp;
+	
+	tp = new DefinedType;
+	memset(tp, 0, sizeof(DefinedType));
+	tp->typeSym = BOOLEAN;
+	tp->kind = TYP_BASE_TYPE;
+	BOOLEAN->SetTypeDefinition(tp);
+	DumpTypeRecord(tp);
+	
+	tp = new DefinedType;
+	memset(tp, 0, sizeof(DefinedType));
+	tp->typeSym = STRING;
+	tp->kind = TYP_BASE_TYPE;
+	STRING->SetTypeDefinition(tp);
+	DumpTypeRecord(tp);
+	
+	tp = new DefinedType;
+	memset(tp, 0, sizeof(DefinedType));
+	tp->typeSym = CHAR;
+	tp->kind = TYP_BASE_TYPE;
+	CHAR->SetTypeDefinition(tp);
+	DumpTypeRecord(tp);
+	
+	tp = new DefinedType;
+	memset(tp, 0, sizeof(DefinedType));
+	tp->typeSym = INTEGER;
+	tp->kind = TYP_BASE_TYPE;
+	INTEGER->SetTypeDefinition(tp);
+	DumpTypeRecord(tp);
+	
+	tp = new DefinedType;
+	memset(tp, 0, sizeof(DefinedType));
+	tp->typeSym = REAL;
+	tp->kind = TYP_BASE_TYPE;
+	REAL->SetTypeDefinition(tp);
+	DumpTypeRecord(tp);
+	
+	
 	// 
 	// -- Now start checking the actual code
 	//    ----------------------------------
@@ -1977,4 +2025,246 @@ void AndExpr::semant(void)
 	Log(DebugLog::LOG_SEMANT, LOG_ENTRY, "Leaving AndExpr::semant()");
 }
 
+
+//====================================================================================================================
+//
+// -- Check List of new type definitions
+//
+//    This simple check is there to dispatch a semantic and type check for each type definition in the typedef
+//    list.
+//
+//    The only thing that is worth mentioning is that types can be referenced in type definitions before that have 
+//    been defined.  Therefore we will need to make 2 passes against the list and pick up all the type names and
+//    add them into the symbol table and then a second pass to actually process the semantic definitions.
+//    ---------------------------------------------------------------------------------------------------------------
+//
+//      Date      Pgmr  Tracker  Version  Description
+//    ----------  ----  -------  -------  --------------------------------------------------------------------------
+//
+//====================================================================================================================
+void TypeDefList::semant(void)
+{
+	Log(DebugLog::LOG_SEMANT, LOG_ENTRY, "Entering TypeDefList::semant()");
+	
+	
+	//
+	// -- This is the first pass to collect the names of all the types and adding them into the symbol table
+	//    --------------------------------------------------------------------------------------------------
+	for (TypeDefList *wrk = this; more(wrk); wrk = next(wrk)) {
+		Ident *id = wrk->Get_typeDef()->Get_id();
+		
+		if (CheckScope(id->Get_entry())) {
+			SemantError(this, "%s is already defined and cannot be redefined as a type", id->GetString());
+		} else AddSymbol(id->Get_entry())->SetTypedef();
+	}
+
+	
+	//
+	// -- This is the second pass to acutally process the type
+	//    ----------------------------------------------------
+	for (TypeDefList *wrk = this; more(wrk); wrk = next(wrk)) {
+		wrk->Get_typeDef()->semant();
+	}
+	
+	
+	Log(DebugLog::LOG_SEMANT, LOG_ENTRY, "Leaving TypeDefList::semant()");
+}
+
+
+//====================================================================================================================
+//
+// -- Check an individual Type Definition
+//
+//    Checking a type definition will require some thoughtful planning, since there are a lot if different kinds of
+//    new types that need to be checked and evaluated.  In particular, we need to make sure that structured types
+//    have offsets for all the different fields.
+//
+//    There will be a number of fields in the Symbol structure specific to types.
+//
+//    The general algotithm we will use here will be:
+//    1)  Perform a semantic check on the actual definition of the type, collecting all required information as we 
+//        go (and return).
+//    2)  Add the type (and the resulting structure) to the symbol table
+//    ---------------------------------------------------------------------------------------------------------------
+//
+//      Date      Pgmr  Tracker  Version  Description
+//    ----------  ----  -------  -------  --------------------------------------------------------------------------
+//
+//====================================================================================================================
+void TypeDef::semant(void)
+{
+	Log(DebugLog::LOG_SEMANT, LOG_ENTRY, "Entering TypeDef::semant()");
+	
+	type->semant();
+	Symbol *sym = FindSymbol(id->Get_entry())->SetTypedef();
+	DefinedType *tp = new DefinedType;
+	if (!tp) SemantError(this, "Out of memory allocating a Defined Type Structure");
+	else {
+		memset(tp, 0, sizeof(DefinedType));
+		sym->SetTypeDefinition(tp);
+		tp->typeSym = sym;
+		BuildTypeStructure(tp);
+		DumpTypeRecord(tp);
+	}
+	
+	Log(DebugLog::LOG_SEMANT, LOG_ENTRY, "Leaving TypeDef::semant()");
+}
+
+
+//====================================================================================================================
+//
+// -- Check a pointer type definition
+//
+//    A pointer type is a pointer to a type that either has already been defined or will be defined in this scope.  
+//    ---------------------------------------------------------------------------------------------------------------
+//
+//      Date      Pgmr  Tracker  Version  Description
+//    ----------  ----  -------  -------  --------------------------------------------------------------------------
+//
+//====================================================================================================================
+void PointerType::semant(void)
+{
+	Log(DebugLog::LOG_SEMANT, LOG_ENTRY, "Entering PointerType::semant()");
+	
+	type->semant();
+	
+	Log(DebugLog::LOG_SEMANT, LOG_ENTRY, "Leaving PointerType::semant()");
+}
+
+
+//====================================================================================================================
+//
+// -- Check a named type definition
+//
+//    A named type is already defined in the symbol table and should be visible.  
+//    ---------------------------------------------------------------------------------------------------------------
+//
+//      Date      Pgmr  Tracker  Version  Description
+//    ----------  ----  -------  -------  --------------------------------------------------------------------------
+//
+//====================================================================================================================
+void NamedType::semant(void)
+{
+	Log(DebugLog::LOG_SEMANT, LOG_ENTRY, "Entering NamedType::semant()");
+	
+	Symbol *sym = FindSymbol(type->Get_entry());
+	if (!sym) {
+		SemantError(this, "Undefined type symbol in type definition");
+	} else if (sym->kind != TYPEDEF) {
+		SemantError(this, "Symbol %s does not name a type in a named type reference", sym->GetKeyString());
+	}
+	
+	Log(DebugLog::LOG_SEMANT, LOG_ENTRY, "Leaving NamedType::semant()");
+}
+
+
+//====================================================================================================================
+//
+// -- Check a subrange type
+//
+//    OK, so for a little more complication...  A subrange type is a type that is a limited range for an ordinal
+//    type (read: integer).  An orderal type has a lower and upper bound (which are inclusive).  These bounds MUST
+//    be of the same type and must be in the range of these types.  The lower bound MUST be numerically lower than
+//    or equal to the upper bound.  The bounds must also sematically evaluate to a constant.  
+//    ---------------------------------------------------------------------------------------------------------------
+//
+//      Date      Pgmr  Tracker  Version  Description
+//    ----------  ----  -------  -------  --------------------------------------------------------------------------
+//
+//====================================================================================================================
+void SubrangeType::semant(void)
+{
+	Log(DebugLog::LOG_SEMANT, LOG_ENTRY, "Entering SubrangeType::semant()");
+
+
+	//
+	// -- prepare by performing the semantic checks on the values
+	//    -------------------------------------------------------
+	fromVal->semant();
+	toVal->semant();
+	
+	
+	//
+	// -- The first thing to do is to evaluate the 2 expressions
+	//    ------------------------------------------------------
+	lowerBound = fromVal->EvaluateConst();
+	upperBound = toVal->EvaluateConst();
+	
+
+	// 
+	// -- make sure both are constants
+	//    ----------------------------
+	if (!lowerBound) SemantError(this, "Lower Bound of Subrange type must evaluate to a constant");
+	if (!upperBound) SemantError(this, "Upper Bound of Subrange type must evaluate to a constant");
+	if (!lowerBound || !upperBound) goto exit;
+	
+	
+	//
+	// -- Now, make sure we are dealing with an INTEGER (or like) type
+	//    ------------------------------------------------------------
+	if (!AreTypesCompatible(this, fromVal->Get_type(), INTEGER)) {
+		SemantError(this, "Lower Bound of Subrange type must evaluate to a scalar type");
+		goto exit;
+	}
+	
+	if (!AreTypesCompatible(this, toVal->Get_type(), INTEGER)) {
+		SemantError(this, "Upper Bound of Subrange type must evaluate to a scalar type");
+		goto exit;
+	}
+	
+	
+	// 
+	// -- Finally, check that the lower bound is actually lower than the upper bound
+	//    --------------------------------------------------------------------------
+	if (lowerBound->intVal > upperBound->intVal) {
+		SemantError(this, "The Lower Bound in Subrange cannot evaluate to greater than the upper bound"); 
+	}
+	
+	
+exit:
+	Log(DebugLog::LOG_SEMANT, LOG_ENTRY, "Leaving SubrangeType::semant()");
+}
+
+
+//====================================================================================================================
+//
+// -- Check an enumerated type
+//
+//    An emunerated type cannot is a list of identifiers that all have a constant value, starting from 0.  Each of 
+//    the identifiers cannot have been defined previously.    
+//    ---------------------------------------------------------------------------------------------------------------
+//
+//      Date      Pgmr  Tracker  Version  Description
+//    ----------  ----  -------  -------  --------------------------------------------------------------------------
+//
+//====================================================================================================================
+void EnumeratedType::semant(void)
+{
+	Log(DebugLog::LOG_SEMANT, LOG_ENTRY, "Entering EnumeratedType::semant()");
+
+	IdentList *idList;
+	long enumVal = 0;
+	
+	for (idList = idents; more(idList); idList = next(idList)) {
+		Ident *id = idList->Get_ident();
+		
+		if (CheckScope(id->Get_entry())) {
+			SemantError(this, "Enumerated identifier %s is already defined in this scope", 
+					id->Get_entry()->GetKeyValue());
+		}
+		
+		ConstantValue *cv = new ConstantValue;
+		if (!cv) Log(DebugLog::LOG_SEMANT, LOG_ERROR, "Out of memory allocating a constant value in enumerated type");
+		memset(cv, 0, sizeof(ConstantValue));
+		cv->intVal = enumVal ++;
+		id->Set_cVal(cv);
+		
+		Symbol *sym = AddSymbol(id->Get_entry());
+		sym->SetIdent()->SetInteger()->SetConst();
+		sym->cVal = cv;
+	}
+	
+
+	Log(DebugLog::LOG_SEMANT, LOG_ENTRY, "Leaving EnumeratedType::semant()");
+}
 

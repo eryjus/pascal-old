@@ -199,7 +199,9 @@ int main(int argc, char *argv[])
 	extern int yyparse(void);
 	extern SourceFile *ast;
 	extern int pErrors;
-
+	extern int semantErrors;
+	
+	
 	InitializeCompiler();
 	ParseCommandLine(argc, argv);
 	dbgLog.OpenDebugFiles();
@@ -208,13 +210,20 @@ int main(int argc, char *argv[])
 	yyparse();
 	
 	if (pErrors) {
-		fprintf(stderr, "Syntax Errors; exiting\n");
+		fprintf(stderr, "%d Syntax Error%s; exiting\n", pErrors, pErrors>1?"s":"");
 		dbgLog.CloseDebugFiles();
 		exit(EXIT_FAILURE);
 	}
 	
 	printf("Beginning semantic analysis\n");
 	ast->semant();
+	
+	if (semantErrors) {
+		fprintf(stderr, "%d Semantic Error%s; exiting\n", semantErrors, semantErrors>1?"s":"");
+		dbgLog.CloseDebugFiles();
+		exit(EXIT_FAILURE);
+	}
+	
 	dbgLog.CloseDebugFiles();
 
 	return EXIT_SUCCESS;

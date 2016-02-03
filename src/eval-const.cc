@@ -152,7 +152,17 @@ ConstantValue *Ident::EvaluateConst(void)
 {
 	Log(DebugLog::LOG_SEMANT, LOG_ENTRY, "Entering Ident::EvaluateConst()");
 	
-	cVal = dup(FindSymbol(entry)->cVal);
+	Symbol *sym = FindSymbol(entry);
+	if (!sym) {
+		SemantError(this, "Identifier %s in constant expression does not exist", entry->GetKeyString());
+		return NULL;
+	}
+	
+	if (!sym->isConst) { 
+		SemantError(this, "Identifier %s in constant expression is not a constant",  entry->GetKeyString());
+	}
+	
+	cVal = dup(sym->cVal);
 	
 	Log(DebugLog::LOG_SEMANT, LOG_ENTRY, "   returning %p", cVal);
 	Log(DebugLog::LOG_SEMANT, LOG_ENTRY, "Leaving Ident::EvaluateConst()");

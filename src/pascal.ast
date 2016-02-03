@@ -161,6 +161,7 @@ $}
 //    types.  The Type AST node will be used to collect these attributes and organize them logically.
 //    ------------------------------------------------------------------------------------------------------------
 $class(Type) $inherits(Common) $abstract ${
+	$func $spec(DefinedType *BuildTypeStructure(DefinedType *tp)) = $external
 $}
 
 
@@ -573,6 +574,9 @@ $}
 //    -------------------------------------------
 $class(NamedType) $inherits(Type) ${
 	$attr $type(Ident *) $name(type)
+
+	$func $spec(void semant(void)) = $external
+	$func $spec(DefinedType *BuildTypeStructure(DefinedType *tp)) = $external
 $}
 
 
@@ -581,6 +585,9 @@ $}
 //    ----------------
 $class(EnumeratedType) $inherits(Type) ${
 	$attr $type(IdentList *) $name(idents)
+
+	$func $spec(void semant(void)) = $external
+	$func $spec(DefinedType *BuildTypeStructure(DefinedType *tp)) = $external
 $}
 
 
@@ -590,6 +597,11 @@ $}
 $class(SubrangeType) $inherits(Type) ${
 	$attr $type(Expr *) $name(fromVal)
 	$attr $type(Expr *) $name(toVal)
+	$attr $type(ConstantValue *) $name(lowerBound) = $no-init(NULL)
+	$attr $type(ConstantValue *) $name(upperBound) = $no-init(NULL)
+
+	$func $spec(void semant(void)) = $external
+	$func $spec(DefinedType *BuildTypeStructure(DefinedType *tp)) = $external
 $}
 
 
@@ -614,6 +626,9 @@ $}
 //    ---------------------------
 $class(PointerType) $inherits(Type) ${
 	$attr $type(Type *) $name(type)
+
+	$func $spec(void semant(void)) = $external
+	$func $spec(DefinedType *BuildTypeStructure(DefinedType *tp)) = $external
 $}
 
 
@@ -669,6 +684,9 @@ $}
 $class(TypeDef) $inherits(Type) ${
 	$attr $type(Ident *) $name(id)
 	$attr $type(Type *) $name(type)
+
+	$func $spec(void semant(void)) = $external
+	$func $spec(DefinedType *BuildTypeStructure(DefinedType *tp)) = $external
 $}
 
 
@@ -950,6 +968,8 @@ $}
 //    --------------------------------------------------
 $class(TypeDefList) $inherits(ListOf) ${
 	$attr $type(TypeDef *) $name(typeDef)
+
+	$func $spec(void semant(void)) = $external
 $}
 
 

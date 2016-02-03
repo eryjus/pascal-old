@@ -18,6 +18,7 @@
 
 struct Symbol;
 class Expr;
+class IdentList;
 
 extern Symbol *BOOLEAN;
 extern Symbol *CHAR;
@@ -36,6 +37,45 @@ bool CheckScope(IdentEntry *entry);
 void ExitScope(void);
 
 void DumpSymbol(Symbol *sym);
+
+
+//
+// -- These are the types we know and will be able to support
+//    -------------------------------------------------------
+typedef enum {
+	TYP_UNKNOWN,
+	TYP_BASE_TYPE,
+	TYP_ALIAS,
+	TYP_POINTER,
+	TYP_SUBRANGE,
+	TYP_ENUMERATION,
+} TypeKind;
+
+
+//
+// -- This structure keeps track of custom types that are defined within the source file
+//    ----------------------------------------------------------------------------------
+typedef struct DefinedType {
+	struct Symbol *typeSym;						// the name if this type; may be NULL if this is an anonymous type
+	TypeKind kind;
+	struct Symbol *hostType;					// the parent type when type is really a subtype (like enums or alias)
+	
+	//
+	// -- The following will be kind-specific information we need to track
+	//    ----------------------------------------------------------------
+	union {		
+		// -- TYP_SUBRANGE			
+		struct {
+			long lowerBound;					// in a subrange type, this is the lower bound of the allowed vals
+			long upperBound;					// in a subrange type, this is the upper bound of the allowed vals
+		};
+		
+		// -- TYP_ENUMERATION
+		struct {
+			IdentList *enumList;				// This is a list of enumerated constants
+		};			
+	};
+} DefinedType;
 
 
 //
@@ -64,7 +104,7 @@ typedef struct Symbol {
 	bool isPacked;
 	Symbol *typeSym;
 	int elemCount;
-	bool boolConst;
+	DefinedType *typeDefinition;
 	Symbol *next;
 	
 	union ConstantValue *cVal;
@@ -87,6 +127,8 @@ typedef struct Symbol {
 	Symbol *SetChar(void) { typeSym = CHAR; return this; }
 	
 	Symbol *SetConst(void) { isConst = true; return this; }
+	
+	Symbol *SetTypeDefinition(DefinedType *t) { typeDefinition = t; return this; }
 } Symbol;
 
 
@@ -103,3 +145,6 @@ typedef struct Scope {
 // -- This is the symbol table -- make it globally available
 //    ------------------------------------------------------
 extern Scope *symbolTable;
+
+
+void DumpTypeRecord(DefinedType *tp);
