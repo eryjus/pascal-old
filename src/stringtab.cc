@@ -24,6 +24,8 @@ NumberTable numTable;
 StringTable strTable;
 
 long int Entry::_NextID = 1;
+long int IdentifierTable::unnamed = 1;
+char IdentifierTable::buf[25];
 
 
 //-------------------------------------------------------------------------------------------------------------------

@@ -11,3 +11,6 @@ src/build-num.cc
 src/grammar.cc
 src/lexer.cc
 
+.kdev4
+*.kdev4
+*-swp

@@ -7,6 +7,9 @@
 //    Date     Tracker  Version  Pgmr  Modification
 // ----/--/--  -------  -------  ----  ---------------------------------------------------------------------------
 // 2016/01/10  Initial   v0.0    ADCL  Initial version -- leveraged from the small-ada compiler
+// 2016-02-10            v0.0    ADCL  You might notice a change in MOST of this source file.  These changes are
+//                                     due to changing how the file is intended (using spaces rather than tabs).
+//                                     In addition, trailing spaces have been removed.
 //
 //===================================================================================================================
 
@@ -17,6 +20,7 @@
 
 #include <string>
 #include <iostream>
+#include <cstdio>
 
 
 //
@@ -30,17 +34,15 @@ private:
     std::string KeyValue;
 
 public:
-    std::string GetKeyValue(void) const { return KeyValue; };
     const char *GetKeyString(void) const { return KeyValue.c_str(); }
 
 public:
-    Entry(const std::string &s) : ID(_NextID ++), KeyValue(s) {};
+    explicit Entry(const std::string &s) : ID(_NextID ++), KeyValue(s) {}
 
 public:
-    static std::string strlwr(const std::string &s) { return strlwr(s.c_str()); };
+    static std::string strlwr(const std::string &s) { return strlwr(s.c_str()); }
     static std::string strlwr(const char *s);
-    bool Equals(const std::string &s) { return (s == KeyValue); };
-    std::string GetString(void) const { return KeyValue; }
+    bool Equals(const std::string &s) const { return (s == KeyValue); }
 };
 
 
@@ -71,6 +73,17 @@ public:
         while (wrk && !wrk->elem()->Equals(s)) wrk = wrk->next();
         return (wrk?wrk->elem():NULL);
     };
+
+public:
+    virtual ~_StringTable() {
+        List<T> *wrk = table;
+
+        while (wrk) {
+            List<T> *w = wrk;
+            wrk = wrk->next();
+            delete w;
+        }
+    };
 };
 
 
@@ -81,8 +94,8 @@ public:
 //    ----------------------------------------------------------------------------------------------------------
 class IdentEntry : public Entry {
 public:
-    IdentEntry(const std::string &id) : Entry(id) {};
-    IdentEntry(const char *id) : Entry(id) {};
+    explicit IdentEntry(const std::string &id) : Entry(id) {};
+    explicit IdentEntry(const char *id) : Entry(id) {};
 };
 
 
@@ -90,9 +103,18 @@ public:
 // -- This is the full identifier table
 //    ---------------------------------
 class IdentifierTable : public _StringTable<IdentEntry> {
+private:
+    static long unnamed;
+    static char buf[25];
+
+private:
+    char *UnnamedStr(void) { sprintf(buf, "%ld", unnamed ++); return buf; }
+
 public:
     IdentEntry *AddString(const char *s) { return add(Entry::strlwr(s)); }
     IdentEntry *AddString(std::string s) { return add(Entry::strlwr(s)); }
+
+    IdentEntry *AddUnnamedIdent(void) { return AddString(std::string("@@") + UnnamedStr()); }
 };
 
 
@@ -103,8 +125,8 @@ public:
 //    --------------------------------------
 class NumberEntry : public Entry {
 public:
-    NumberEntry(const std::string &num) : Entry(num) {};
-    NumberEntry(const char *num) : Entry(num) {};
+    explicit NumberEntry(const std::string &num) : Entry(num) {};
+    explicit NumberEntry(const char *num) : Entry(num) {};
 };
 
 
@@ -124,8 +146,8 @@ public:
 //    ---------------------------------------------
 class StringEntry : public Entry {
 public:
-    StringEntry(const std::string &s) : Entry(s) {};
-    StringEntry(const char *s) : Entry(s) {};
+    explicit StringEntry(const std::string &s) : Entry(s) {};
+    explicit StringEntry(const char *s) : Entry(s) {};
 };
 
 

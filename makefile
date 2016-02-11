@@ -79,6 +79,9 @@ endif
 $(TGT): $(OBJ) makefile
 	echo "LINK  " $@
 	$(LD) -o $@ $(OBJ) $(LIBS)
+	echo "LINT  " $@
+	cppcheck --force --inconclusive --inline-suppr --enable=all -Iinclude -isrc/lexer.cc \
+			-isrc/grammar.cc src/*.cc --suppress=missingIncludeSystem > /dev/null
 
 $(BLD-SRC): $(ALL-SRC) makefile
 	echo "BUILD  Incrementing Build Number..."
@@ -130,5 +133,7 @@ clean:
 	rm -f ast-nodes.h
 	rm -fR obj
 	rm -f *~
+	rm -f src/*~
+	rm -f include/*~
 	rm -f .gitignore~
 	echo "All cleaned up!"

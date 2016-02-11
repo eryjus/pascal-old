@@ -7,6 +7,9 @@
 //    Date     Tracker  Version  Pgmr  Modification
 // ----/--/--  -------  -------  ----  ---------------------------------------------------------------------------
 // 2016/01/07  Initial   v0.0    ADCL  Initial version -- leveraged from the pascal compiler, but made C++
+// 2016-02-10            v0.0    ADCL  You might notice a change in MOST of this source file.  These changes are
+//                                     due to changing how the file is intended (using spaces rather than tabs).
+//                                     In addition, trailing spaces have been removed.
 //
 //===================================================================================================================
 
@@ -25,11 +28,11 @@ extern std::string srcFile;
 // -- A static member that needs to be initialized at compile time
 //    ------------------------------------------------------------
 const std::string DebugLog::loggerNames[LOG_LAST + 1] = {
-		"  Hash",
-		"   Sym",
-		"   Lex",
-		"  Yacc",
-		"Semant",
+        "  Hash",
+        "   Sym",
+        "   Lex",
+        "  Yacc",
+        "Semant",
 };
 
 
@@ -44,13 +47,13 @@ DebugLog dbgLog;
 //-------------------------------------------------------------------------------------------------------------------
 DebugLog::DebugLog(void)
 {
-	int l;
+    int l;
 
-	for (l = LOG_FIRST; l < LOG_LAST; l ++) {
-		debugFiles[l] = NULL;
-		debugFileNames[l] = "";
-		debugLevels[l] = LOG_SEVERE;
-	}
+    for (l = LOG_FIRST; l < LOG_LAST; l ++) {
+        debugFiles[l] = NULL;
+        debugFileNames[l] = "";
+        debugLevels[l] = LOG_SEVERE;
+    }
 }
 
 
@@ -59,7 +62,7 @@ DebugLog::DebugLog(void)
 //-------------------------------------------------------------------------------------------------------------------
 DebugLog::~DebugLog(void)
 {
-	CloseDebugFiles();
+    CloseDebugFiles();
 }
 
 
@@ -68,12 +71,12 @@ DebugLog::~DebugLog(void)
 //-------------------------------------------------------------------------------------------------------------------
 void DebugLog::OpenDebugFiles(void)
 {
-	int l;
+    int l;
 
-	for (l = LOG_FIRST; l <= LOG_LAST; l ++) {
-		if (debugFileNames[l] == "") debugFiles[l] = fopen(debugFileNames[l].c_str(), "w");
-		if (!debugFiles[l]) debugFiles[l] = stderr;
-	}
+    for (l = LOG_FIRST; l <= LOG_LAST; l ++) {
+        if (debugFileNames[l] == "") debugFiles[l] = fopen(debugFileNames[l].c_str(), "w");
+        if (!debugFiles[l]) debugFiles[l] = stderr;
+    }
 }
 
 
@@ -82,11 +85,11 @@ void DebugLog::OpenDebugFiles(void)
 //-------------------------------------------------------------------------------------------------------------------
 void DebugLog::CloseDebugFiles(void)
 {
-	int l;
+    int l;
 
-	for (l = LOG_FIRST; l < LOG_LAST; l ++) {
-		if (debugFiles[l] && debugFiles[l] != stderr) fclose(debugFiles[l]);
-	}
+    for (l = LOG_FIRST; l < LOG_LAST; l ++) {
+        if (debugFiles[l] && debugFiles[l] != stderr) fclose(debugFiles[l]);
+    }
 }
 
 
@@ -95,8 +98,8 @@ void DebugLog::CloseDebugFiles(void)
 //-------------------------------------------------------------------------------------------------------------------
 void DebugLog::LoggingLevel(Logger logger, LogLevel level)
 {
-	if (logger < LOG_FIRST || logger > LOG_LAST) return;
-	debugLevels[logger] = level;
+    if (logger < LOG_FIRST || logger > LOG_LAST) return;
+    debugLevels[logger] = level;
 }
 
 
@@ -105,8 +108,8 @@ void DebugLog::LoggingLevel(Logger logger, LogLevel level)
 //-------------------------------------------------------------------------------------------------------------------
 LogLevel DebugLog::LoggingLevel(Logger logger)
 {
-	if (logger < LOG_FIRST || logger > LOG_LAST) return LOG_NONE;
-	return debugLevels[logger];
+    if (logger < LOG_FIRST || logger > LOG_LAST) return LOG_NONE;
+    return debugLevels[logger];
 }
 
 
@@ -115,8 +118,8 @@ LogLevel DebugLog::LoggingLevel(Logger logger)
 //-------------------------------------------------------------------------------------------------------------------
 void DebugLog::LoggingFile(Logger logger, std::string &name)
 {
-	if (logger < LOG_FIRST || logger > LOG_LAST) return;
-	debugFileNames[logger] = name;
+    if (logger < LOG_FIRST || logger > LOG_LAST) return;
+    debugFileNames[logger] = name;
 }
 
 
@@ -125,8 +128,8 @@ void DebugLog::LoggingFile(Logger logger, std::string &name)
 //-------------------------------------------------------------------------------------------------------------------
 std::string DebugLog::LoggingFile(Logger logger)
 {
-	if (logger < LOG_FIRST || logger > LOG_LAST) return NULL;
-	return debugFileNames[logger];
+    if (logger < LOG_FIRST || logger > LOG_LAST) return NULL;
+    return debugFileNames[logger];
 }
 
 
@@ -137,20 +140,20 @@ void DebugLog::WriteLog(Logger log, LogLevel lvl, std::string file, int line, st
 {
 #define MAX_BUF_LEN		2048
 #define fnLen 20
-	char buf[MAX_BUF_LEN];
-	char fileLoc[MAX_BUF_LEN];
-	va_list args;
+    char buf[MAX_BUF_LEN];
+    char fileLoc[MAX_BUF_LEN];
+    va_list args;
 
-	sprintf(fileLoc, "%s:%d", file.c_str(), line);
-	std::string fLoc(fileLoc);
-	if (fLoc.length() > fnLen) fLoc = fLoc.substr(fLoc.length() - fnLen);
+    sprintf(fileLoc, "%s:%d", file.c_str(), line);
+    std::string fLoc(fileLoc);
+    if (fLoc.length() > fnLen) fLoc = fLoc.substr(fLoc.length() - fnLen);
 
-	va_start(args, text);
-	vsprintf(buf, text.c_str(), args);
-	va_end(args);
+    va_start(args, text);
+    vsprintf(buf, text.c_str(), args);
+    va_end(args);
 
-	if (debugLevels[log] >= lvl) {
-		fprintf(debugFiles[log], GREEN HI "%s(%d) " BLUE HI "[...%-*.*s]:" RESET " %s\n", 
-				loggerNames[log].c_str(), lvl, fnLen, fnLen, fLoc.c_str(), buf);
-	}
+    if (debugLevels[log] >= lvl) {
+        fprintf(debugFiles[log], GREEN HI "%s(%d) " BLUE HI "[...%-*.*s]:" RESET " %s\n",
+                loggerNames[log].c_str(), lvl, fnLen, fnLen, fLoc.c_str(), buf);
+    }
 }
